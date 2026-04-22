@@ -1,0 +1,285 @@
+# CI/CD Pipeline for Shopping Management System
+# Triggers on push and pull_request to any branch
+# Requirements: 29.1 - 29.7
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1: Linux GCC  (warnings-as-errors + tests)
+  # ─────────────────────────────────────────────
+  linux-gcc:
+    name: Linux / GCC
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake
+
+      - name: Build RapidCheck
+        run: |
+          mkdir -p rapidcheck/build
+          cd rapidcheck/build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+          cp librapidcheck.a ../../obj/librapidcheck.a
+
+      - name: Create data directories
+        run: mkdir -p obj bin data/receipts
+
+      - name: Build library objects (warnings as errors)
+        run: |
+          make -f Makefile.linux all \
+            CXXFLAGS="-std=c++17 -Wall -Wextra -Werror -Iinclude -pthread"
+
+      - name: Run unit tests
+        run: make -f Makefile.linux test_all
+
+      - name: Run property-based tests
+        run: make -f Makefile.linux test_pbt
+
+  # ─────────────────────────────────────────────
+  # Job 2: Linux Clang (warnings-as-errors + tests)
+  # ─────────────────────────────────────────────
+  linux-clang:
+    name: Linux / Clang
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang cmake
+
+      - name: Build RapidCheck
+        run: |
+          mkdir -p rapidcheck/build
+          cd rapidcheck/build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
+          make -j$(nproc)
+          cp librapidcheck.a ../../obj/librapidcheck.a
+
+      - name: Create data directories
+        run: mkdir -p obj bin data/receipts
+
+      - name: Build library objects (warnings as errors)
+        run: |
+          make -f Makefile.linux all \
+            CXX=clang++ \
+            CXXFLAGS="-std=c++17 -Wall -Wextra -Werror -Iinclude -pthread"
+
+      - name: Run unit tests
+        run: make -f Makefile.linux test_all CXX=clang++
+
+      - name: Run property-based tests
+        run: make -f Makefile.linux test_pbt CXX=clang++
+
+  # ─────────────────────────────────────────────
+  # Job 3: macOS Clang (warnings-as-errors + tests)
+  # ─────────────────────────────────────────────
+  macos-clang:
+    name: macOS / Clang
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: brew install cmake
+
+      - name: Build RapidCheck
+        run: |
+          mkdir -p rapidcheck/build
+          cd rapidcheck/build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j$(sysctl -n hw.logicalcpu)
+          cp librapidcheck.a ../../obj/librapidcheck.a
+
+      - name: Create data directories
+        run: mkdir -p obj bin data/receipts
+
+      - name: Build library objects (warnings as errors)
+        run: |
+          make -f Makefile.macos all \
+            CXXFLAGS="-std=c++17 -Wall -Wextra -Werror -Iinclude"
+
+      - name: Run unit tests
+        run: make -f Makefile.macos test_all
+
+      - name: Run property-based tests
+        run: make -f Makefile.macos test_pbt
+
+  # ─────────────────────────────────────────────
+  # Job 4: Windows MinGW (warnings-as-errors + tests)
+  # ─────────────────────────────────────────────
+  windows-mingw:
+    name: Windows / MinGW
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            make
+
+      - name: Build RapidCheck
+        run: |
+          mkdir -p rapidcheck/build
+          cd rapidcheck/build
+          cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+          make -j4
+          cp librapidcheck.a ../../obj/librapidcheck.a
+
+      - name: Create data directories
+        run: mkdir -p obj bin data/receipts
+
+      - name: Build library objects (warnings as errors)
+        run: |
+          make -f Makefile.windows all \
+            CXXFLAGS="-std=c++17 -Wall -Wextra -Werror -Iinclude -mconsole"
+
+      - name: Run unit tests
+        run: make -f Makefile.windows test_all
+
+      - name: Run property-based tests
+        run: make -f Makefile.windows test_pbt
+
+  # ─────────────────────────────────────────────
+  # Job 5: AddressSanitizer (Linux GCC)
+  # Requirements: 29.4
+  # ─────────────────────────────────────────────
+  asan:
+    name: AddressSanitizer / Linux GCC
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake
+
+      - name: Build RapidCheck
+        run: |
+          mkdir -p rapidcheck/build
+          cd rapidcheck/build
+          cmake .. -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address -g"
+          make -j$(nproc)
+          cp librapidcheck.a ../../obj/librapidcheck.a
+
+      - name: Create data directories
+        run: mkdir -p obj bin data/receipts
+
+      - name: Build with AddressSanitizer
+        run: |
+          make -f Makefile.linux all \
+            CXXFLAGS="-std=c++17 -Wall -Wextra -Werror -Iinclude -pthread -fsanitize=address -g" \
+            LDFLAGS="-pthread -fsanitize=address"
+
+      - name: Run unit tests under ASAN
+        env:
+          ASAN_OPTIONS: halt_on_error=1:detect_leaks=1
+        run: |
+          make -f Makefile.linux test_all \
+            CXXFLAGS="-std=c++17 -Wall -Wextra -Werror -Iinclude -pthread -fsanitize=address -g" \
+            LDFLAGS="-pthread -fsanitize=address"
+
+      - name: Run PBT tests under ASAN
+        env:
+          ASAN_OPTIONS: halt_on_error=1:detect_leaks=1
+        run: |
+          make -f Makefile.linux test_pbt \
+            CXXFLAGS="-std=c++17 -Wall -Wextra -Werror -Iinclude -pthread -fsanitize=address -g" \
+            LDFLAGS="-pthread -fsanitize=address"
+
+  # ─────────────────────────────────────────────
+  # Job 6: Code Coverage (Linux GCC + lcov + Codecov)
+  # Requirements: 29.5, 29.6
+  # ─────────────────────────────────────────────
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake lcov
+
+      - name: Build RapidCheck
+        run: |
+          mkdir -p rapidcheck/build
+          cd rapidcheck/build
+          cmake .. -DCMAKE_BUILD_TYPE=Debug
+          make -j$(nproc)
+          cp librapidcheck.a ../../obj/librapidcheck.a
+
+      - name: Create data directories
+        run: mkdir -p obj bin data/receipts
+
+      - name: Build with coverage instrumentation
+        run: |
+          make -f Makefile.linux all \
+            CXXFLAGS="-std=c++17 -Wall -Wextra -Iinclude -pthread --coverage -g -O0" \
+            LDFLAGS="-pthread --coverage"
+
+      - name: Run all tests (coverage collection)
+        run: |
+          make -f Makefile.linux test_all \
+            CXXFLAGS="-std=c++17 -Wall -Wextra -Iinclude -pthread --coverage -g -O0" \
+            LDFLAGS="-pthread --coverage"
+          make -f Makefile.linux test_pbt \
+            CXXFLAGS="-std=c++17 -Wall -Wextra -Iinclude -pthread --coverage -g -O0" \
+            LDFLAGS="-pthread --coverage"
+
+      - name: Generate lcov coverage report
+        run: |
+          lcov --capture --directory obj --output-file coverage.info \
+            --ignore-errors mismatch
+          lcov --remove coverage.info \
+            '/usr/*' '*/rapidcheck/*' '*/tests/*' \
+            --output-file coverage.info
+          lcov --list coverage.info
+
+      - name: Check coverage thresholds
+        run: |
+          LINE_COV=$(lcov --summary coverage.info 2>&1 | grep "lines" | grep -oP '[0-9]+\.[0-9]+(?=%)' | head -1)
+          BRANCH_COV=$(lcov --summary coverage.info 2>&1 | grep "branches" | grep -oP '[0-9]+\.[0-9]+(?=%)' | head -1)
+          echo "Line coverage:   ${LINE_COV}%  (target: 90%)"
+          echo "Branch coverage: ${BRANCH_COV}%  (target: 85%)"
+          if [ "$(echo "${LINE_COV} < 90" | bc -l)" = "1" ]; then
+            echo "::warning::Line coverage ${LINE_COV}% is below 90% target"
+          fi
+          if [ "$(echo "${BRANCH_COV} < 85" | bc -l)" = "1" ]; then
+            echo "::warning::Branch coverage ${BRANCH_COV}% is below 85% target"
+          fi
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.info
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}

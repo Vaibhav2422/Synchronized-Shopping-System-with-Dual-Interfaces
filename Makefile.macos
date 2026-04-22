@@ -1,0 +1,74 @@
+# Makefile.macos — macOS-specific build configuration
+# Usage: make -f Makefile.macos app
+# Set CXX to your compiler: make -f Makefile.macos app CXX=g++-13
+
+CXX ?= g++
+CXXFLAGS = -std=c++17 -Wall -Wextra -Iinclude
+LDFLAGS =
+
+SRC_DIR = src
+OBJ_DIR = obj
+BIN_DIR = bin
+TEST_DIR = tests
+
+TARGET = $(BIN_DIR)/shopping_system
+
+SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
+OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+LIB_SOURCES = $(filter-out $(SRC_DIR)/main.cpp, $(SOURCES))
+LIB_OBJECTS = $(LIB_SOURCES:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+
+RC_INC = -Irapidcheck/include
+RC_LIB = obj/librapidcheck.a
+
+.PHONY: all app clean directories test_all test_pbt
+
+all: directories $(LIB_OBJECTS)
+	@echo "Library objects built (macOS)."
+
+directories:
+	mkdir -p $(OBJ_DIR) $(BIN_DIR) data/receipts
+
+app: directories $(OBJECTS)
+	$(CXX) $(OBJECTS) -o $(TARGET) $(LDFLAGS)
+	@echo "Build complete: $(TARGET)"
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(OBJ_DIR)/*.o $(BIN_DIR)/*
+	@echo "Clean complete"
+
+run: app
+	./$(TARGET)
+
+# AddressSanitizer build (macOS uses Apple's ASAN)
+asan: CXXFLAGS += -fsanitize=address -g
+asan: LDFLAGS += -fsanitize=address
+asan: app
+	@echo "ASAN build complete"
+
+test_all: directories $(LIB_OBJECTS)
+	@for t in test_product_simple test_order_simple test_order_history_simple \
+	           test_receipt_simple test_payment_simple test_bill_simple \
+	           test_coupon_simple test_cart_operations_simple \
+	           test_inventory_operations_simple test_admin_simple \
+	           test_ui_simple test_integration test_product_factory \
+	           test_inventory_display test_sample_data test_unit_cases \
+	           test_transaction_simple; do \
+	    echo "Running $$t..."; \
+	    $(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/$$t.cpp -o $(BIN_DIR)/$$t $(LDFLAGS) && \
+	    $(BIN_DIR)/$$t || exit 1; \
+	done
+	@echo "All tests passed."
+
+test_pbt: directories $(LIB_OBJECTS)
+	@for t in test_product test_bill test_coupon test_cart_operations \
+	           test_inventory_operations test_payment; do \
+	    echo "Running PBT $$t..."; \
+	    $(CXX) $(CXXFLAGS) $(RC_INC) $(LIB_OBJECTS) $(TEST_DIR)/$$t.cpp $(RC_LIB) \
+	        -o $(BIN_DIR)/$$t\_pbt $(LDFLAGS) && \
+	    $(BIN_DIR)/$$t\_pbt || exit 1; \
+	done
+	@echo "All PBT tests passed."

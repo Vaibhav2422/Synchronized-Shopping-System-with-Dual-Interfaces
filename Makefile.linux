@@ -1,0 +1,116 @@
+# Makefile.linux — Linux-specific build configuration
+# Usage: make -f Makefile.linux app
+
+CXX = g++
+CXXFLAGS = -std=c++17 -Wall -Wextra -Iinclude -pthread
+LDFLAGS = -pthread
+
+SRC_DIR = src
+OBJ_DIR = obj
+BIN_DIR = bin
+TEST_DIR = tests
+
+TARGET = $(BIN_DIR)/shopping_system
+
+SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
+OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+LIB_SOURCES = $(filter-out $(SRC_DIR)/main.cpp, $(SOURCES))
+LIB_OBJECTS = $(LIB_SOURCES:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+
+RC_INC = -Irapidcheck/include
+RC_LIB = obj/librapidcheck.a
+
+.PHONY: all app clean directories test_all test_pbt coverage memcheck asan
+
+all: directories $(LIB_OBJECTS)
+	@echo "Library objects built (Linux)."
+
+directories:
+	mkdir -p $(OBJ_DIR) $(BIN_DIR) data/receipts
+
+app: directories $(OBJECTS)
+	$(CXX) $(OBJECTS) -o $(TARGET) $(LDFLAGS)
+	@echo "Build complete: $(TARGET)"
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(OBJ_DIR)/*.o $(BIN_DIR)/*
+	@echo "Clean complete"
+
+run: app
+	./$(TARGET)
+
+# Memory check target (requires valgrind)
+memcheck: app
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(TARGET)
+
+# AddressSanitizer build
+asan: CXXFLAGS += -fsanitize=address -g
+asan: LDFLAGS += -fsanitize=address
+asan: app
+	@echo "ASAN build complete"
+
+test_all: directories $(LIB_OBJECTS)
+	@for t in test_product_simple test_order_simple test_order_history_simple \
+	           test_receipt_simple test_payment_simple test_bill_simple \
+	           test_coupon_simple test_cart_operations_simple \
+	           test_inventory_operations_simple test_admin_simple \
+	           test_ui_simple test_integration test_product_factory \
+	           test_inventory_display test_sample_data test_unit_cases \
+	           test_transaction_simple test_exceptions test_utility \
+	           test_edge_cases test_negative_cases test_boundary_cases; do \
+	    echo "Running $$t..."; \
+	    $(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/$$t.cpp -o $(BIN_DIR)/$$t $(LDFLAGS) && \
+	    $(BIN_DIR)/$$t || exit 1; \
+	done
+	@echo "All tests passed."
+
+test_pbt: directories $(LIB_OBJECTS)
+	@for t in test_product test_bill test_coupon test_cart_operations \
+	           test_inventory_operations test_payment; do \
+	    echo "Running PBT $$t..."; \
+	    $(CXX) $(CXXFLAGS) $(RC_INC) $(LIB_OBJECTS) $(TEST_DIR)/$$t.cpp $(RC_LIB) \
+	        -o $(BIN_DIR)/$$t\_pbt $(LDFLAGS) && \
+	    $(BIN_DIR)/$$t\_pbt || exit 1; \
+	done
+	@echo "All PBT tests passed."
+
+# Coverage variables
+COV_CXXFLAGS = -std=c++17 -Wall -Wextra -Iinclude -pthread --coverage -g -O0
+COV_LDFLAGS  = -pthread --coverage
+
+# Coverage target - requires lcov and genhtml
+# Usage: make -f Makefile.linux coverage
+coverage: directories
+	@echo "=== Building with coverage instrumentation ==="
+	$(MAKE) -f Makefile.linux clean
+	$(MAKE) -f Makefile.linux all CXXFLAGS="$(COV_CXXFLAGS)" LDFLAGS="$(COV_LDFLAGS)"
+	@echo "=== Running all unit tests ==="
+	$(MAKE) -f Makefile.linux test_all CXXFLAGS="$(COV_CXXFLAGS)" LDFLAGS="$(COV_LDFLAGS)"
+	@echo "=== Running PBT tests ==="
+	$(MAKE) -f Makefile.linux test_pbt CXXFLAGS="$(COV_CXXFLAGS)" LDFLAGS="$(COV_LDFLAGS)"
+	@echo "=== Collecting coverage data ==="
+	lcov --capture --directory $(OBJ_DIR) --output-file coverage.info --ignore-errors mismatch
+	lcov --remove coverage.info '/usr/*' '*/rapidcheck/*' '*/tests/*' --output-file coverage.info
+	@echo "=== Coverage summary ==="
+	lcov --list coverage.info
+	@echo "=== Generating HTML report ==="
+	genhtml coverage.info --output-directory coverage_html
+	@echo "HTML report generated in coverage_html/index.html"
+	@echo "=== Checking thresholds ==="
+	@LINE_COV=$$(lcov --summary coverage.info 2>&1 | grep "lines" | grep -oP '[0-9]+\.[0-9]+(?=%)' | head -1); \
+	 BRANCH_COV=$$(lcov --summary coverage.info 2>&1 | grep "branches" | grep -oP '[0-9]+\.[0-9]+(?=%)' | head -1); \
+	 echo "Line coverage:   $${LINE_COV}%  (target: 90%)"; \
+	 echo "Branch coverage: $${BRANCH_COV}%  (target: 85%)"; \
+	 if [ "$$(echo "$${LINE_COV} < 90" | bc -l)" = "1" ]; then \
+	     echo "WARNING: Line coverage $${LINE_COV}% is below 90% target"; \
+	 else \
+	     echo "PASS: Line coverage $${LINE_COV}% meets 90% target"; \
+	 fi; \
+	 if [ "$$(echo "$${BRANCH_COV} < 85" | bc -l)" = "1" ]; then \
+	     echo "WARNING: Branch coverage $${BRANCH_COV}% is below 85% target"; \
+	 else \
+	     echo "PASS: Branch coverage $${BRANCH_COV}% meets 85% target"; \
+	 fi

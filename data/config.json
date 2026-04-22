@@ -1,0 +1,13 @@
+{
+  "gst_rate": 0.18,
+  "cart_discount_threshold": 5000.0,
+  "cart_discount_rate": 0.05,
+  "admin": {
+    "username": "admin",
+    "password": "admin123"
+  },
+  "coupons": {
+    "SAVE10": 10,
+    "FESTIVE20": 20
+  }
+}

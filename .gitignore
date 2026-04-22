@@ -1,0 +1,50 @@
+# Build artifacts
+obj/
+bin/
+*.o
+*.exe
+
+# Data files (generated at runtime)
+data/orders.txt
+data/system.log
+data/receipts/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Compiled binaries
+shopping_system
+shopping_system.exe
+
+# Temporary files
+*.tmp
+*.bak
+
+# Node modules
+frontend/node_modules/
+node_modules/
+
+# Frontend build output
+frontend/dist/
+
+# Kiro AI spec/agent files
+.kiro/
+
+# Misc output logs
+out.txt
+err.txt
+make_out.txt
+make_err.txt
+make_test_out.txt
+obj_list.txt
+
+# Zip archives
+*.zip

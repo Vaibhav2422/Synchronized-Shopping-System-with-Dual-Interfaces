@@ -1,0 +1,163 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+
+:root {
+  --bg:        #0a0a0f;
+  --bg2:       #111118;
+  --bg3:       #1a1a24;
+  --border:    rgba(212,175,55,0.15);
+  --gold:      #d4af37;
+  --gold2:     #f0d060;
+  --gold-dim:  rgba(212,175,55,0.08);
+  --text:      #e8e8f0;
+  --text-dim:  #8888a0;
+  --green:     #4ade80;
+  --red:       #f87171;
+  --blue:      #60a5fa;
+  --radius:    12px;
+  --radius-lg: 20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+/* Glass card */
+.glass {
+  background: rgba(26,26,36,0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.glass-lg {
+  background: rgba(26,26,36,0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* Gold gradient text */
+.gold-text {
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold), #b8960a);
+  color: #0a0a0f;
+  font-weight: 600;
+}
+.btn-gold:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+.btn-ghost {
+  background: var(--gold-dim);
+  color: var(--gold);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: rgba(212,175,55,0.15); }
+
+.btn-danger {
+  background: rgba(248,113,113,0.1);
+  color: var(--red);
+  border: 1px solid rgba(248,113,113,0.2);
+}
+.btn-danger:hover { background: rgba(248,113,113,0.2); }
+
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+/* Inputs */
+.input {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input:focus { border-color: var(--gold); }
+.input::placeholder { color: var(--text-dim); }
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.badge-gold  { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--border); }
+.badge-green { background: rgba(74,222,128,0.1); color: var(--green); }
+.badge-red   { background: rgba(248,113,113,0.1); color: var(--red); }
+.badge-blue  { background: rgba(96,165,250,0.1); color: var(--blue); }
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
+}
+
+/* Animations */
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes shimmer { 0%,100% { opacity:0.4; } 50% { opacity:0.8; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.fade-in { animation: fadeIn 0.3s ease; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg2) 25%, var(--bg3) 50%, var(--bg2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}

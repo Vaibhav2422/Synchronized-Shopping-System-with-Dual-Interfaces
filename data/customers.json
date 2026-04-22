@@ -1,0 +1,14 @@
+{
+  "customers": [
+    {
+      "customerId": "CUST0001",
+      "name": "StatsUser3613",
+      "phone": "93100003613",
+      "passwordHash": "30c952fab122c3f9759f02a6d95c3758b246b4fee239957b2d4fee46e26170c4",
+      "loyaltyPoints": 0,
+      "orderIds": [167, 168],
+      "createdAt": ""
+    }
+  ],
+  "nextIndex": 2
+}

@@ -1,0 +1,76 @@
+# Makefile.windows — Windows MinGW-specific build configuration
+# Usage: mingw32-make -f Makefile.windows app
+
+CXX = g++
+CXXFLAGS = -std=c++17 -Wall -Wextra -Iinclude -mconsole
+LDFLAGS = -mconsole
+
+SRC_DIR = src
+OBJ_DIR = obj
+BIN_DIR = bin
+TEST_DIR = tests
+
+TARGET = $(BIN_DIR)/shopping_system.exe
+
+SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
+OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+LIB_SOURCES = $(filter-out $(SRC_DIR)/main.cpp, $(SOURCES))
+LIB_OBJECTS = $(LIB_SOURCES:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+
+RC_INC = -Irapidcheck/include
+RC_LIB = obj/librapidcheck.a
+
+.PHONY: all app clean directories test_all test_pbt
+
+all: directories $(LIB_OBJECTS)
+	@echo Library objects built (Windows).
+
+directories:
+	-mkdir $(OBJ_DIR) 2>nul
+	-mkdir $(BIN_DIR) 2>nul
+	-mkdir data 2>nul
+	-mkdir data\receipts 2>nul
+
+app: directories $(OBJECTS)
+	$(CXX) $(OBJECTS) -o $(TARGET) $(LDFLAGS)
+	@echo Build complete: $(TARGET)
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+clean:
+	-del /Q $(OBJ_DIR)\*.o 2>nul
+	-del /Q $(BIN_DIR)\*.exe 2>nul
+	@echo Clean complete
+
+run: app
+	$(TARGET)
+
+test_all: directories $(LIB_OBJECTS)
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_product_simple.cpp -o $(BIN_DIR)/test_product.exe $(LDFLAGS) && $(BIN_DIR)/test_product.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_order_simple.cpp -o $(BIN_DIR)/test_order.exe $(LDFLAGS) && $(BIN_DIR)/test_order.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_order_history_simple.cpp -o $(BIN_DIR)/test_order_history.exe $(LDFLAGS) && $(BIN_DIR)/test_order_history.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_receipt_simple.cpp -o $(BIN_DIR)/test_receipt.exe $(LDFLAGS) && $(BIN_DIR)/test_receipt.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_payment_simple.cpp -o $(BIN_DIR)/test_payment.exe $(LDFLAGS) && $(BIN_DIR)/test_payment.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_bill_simple.cpp -o $(BIN_DIR)/test_bill.exe $(LDFLAGS) && $(BIN_DIR)/test_bill.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_coupon_simple.cpp -o $(BIN_DIR)/test_coupon.exe $(LDFLAGS) && $(BIN_DIR)/test_coupon.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_cart_operations_simple.cpp -o $(BIN_DIR)/test_cart.exe $(LDFLAGS) && $(BIN_DIR)/test_cart.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_inventory_operations_simple.cpp -o $(BIN_DIR)/test_inventory.exe $(LDFLAGS) && $(BIN_DIR)/test_inventory.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_admin_simple.cpp -o $(BIN_DIR)/test_admin.exe $(LDFLAGS) && $(BIN_DIR)/test_admin.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_ui_simple.cpp -o $(BIN_DIR)/test_ui.exe $(LDFLAGS) && $(BIN_DIR)/test_ui.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_integration.cpp -o $(BIN_DIR)/test_integration.exe $(LDFLAGS) && $(BIN_DIR)/test_integration.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_product_factory.cpp -o $(BIN_DIR)/test_product_factory.exe $(LDFLAGS) && $(BIN_DIR)/test_product_factory.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_inventory_display.cpp -o $(BIN_DIR)/test_inventory_display.exe $(LDFLAGS) && $(BIN_DIR)/test_inventory_display.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_sample_data.cpp -o $(BIN_DIR)/test_sample_data.exe $(LDFLAGS) && $(BIN_DIR)/test_sample_data.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_unit_cases.cpp -o $(BIN_DIR)/test_unit_cases.exe $(LDFLAGS) && $(BIN_DIR)/test_unit_cases.exe
+	$(CXX) $(CXXFLAGS) $(LIB_OBJECTS) $(TEST_DIR)/test_transaction_simple.cpp -o $(BIN_DIR)/test_transaction.exe $(LDFLAGS) && $(BIN_DIR)/test_transaction.exe
+	@echo All tests completed.
+
+test_pbt: directories $(LIB_OBJECTS)
+	$(CXX) $(CXXFLAGS) $(RC_INC) $(LIB_OBJECTS) $(TEST_DIR)/test_product.cpp $(RC_LIB) -o $(BIN_DIR)/test_product_pbt.exe $(LDFLAGS) && $(BIN_DIR)/test_product_pbt.exe
+	$(CXX) $(CXXFLAGS) $(RC_INC) $(LIB_OBJECTS) $(TEST_DIR)/test_bill.cpp $(RC_LIB) -o $(BIN_DIR)/test_bill_pbt.exe $(LDFLAGS) && $(BIN_DIR)/test_bill_pbt.exe
+	$(CXX) $(CXXFLAGS) $(RC_INC) $(LIB_OBJECTS) $(TEST_DIR)/test_coupon.cpp $(RC_LIB) -o $(BIN_DIR)/test_coupon_pbt.exe $(LDFLAGS) && $(BIN_DIR)/test_coupon_pbt.exe
+	$(CXX) $(CXXFLAGS) $(RC_INC) $(LIB_OBJECTS) $(TEST_DIR)/test_cart_operations.cpp $(RC_LIB) -o $(BIN_DIR)/test_cart_pbt.exe $(LDFLAGS) && $(BIN_DIR)/test_cart_pbt.exe
+	$(CXX) $(CXXFLAGS) $(RC_INC) $(LIB_OBJECTS) $(TEST_DIR)/test_inventory_operations.cpp $(RC_LIB) -o $(BIN_DIR)/test_inventory_pbt.exe $(LDFLAGS) && $(BIN_DIR)/test_inventory_pbt.exe
+	$(CXX) $(CXXFLAGS) $(RC_INC) $(LIB_OBJECTS) $(TEST_DIR)/test_payment.cpp $(RC_LIB) -o $(BIN_DIR)/test_payment_pbt.exe $(LDFLAGS) && $(BIN_DIR)/test_payment_pbt.exe
+	@echo All PBT tests completed.
