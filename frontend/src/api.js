@@ -19,6 +19,8 @@ export const getBill        = (redeem = false) => api.get(`/bill?redeem=${redeem
 export const splitBill      = (count)      => api.post('/bill/split', { count });
 
 export const getLoyalty     = ()           => api.get('/loyalty');
+export const getCustomerLoyalty = (token)  =>
+  axios.get('http://localhost:8082/api/me/loyalty', { headers: { 'X-Token': token } });
 
 export const checkout       = (data)       => api.post('/checkout', data);
 
@@ -33,3 +35,5 @@ export const deleteProduct  = (id)         => api.delete(`/admin/product/${id}`)
 export const searchCustomers  = (q)        => api.get(`/customers/search?q=${encodeURIComponent(q)}`);
 export const registerCustomer = (data)     => api.post('/customers/register', data);
 export const getRankedCustomers = ()       => api.get('/customers/ranked');
+export const verifyCustomer   = (customerId, password) =>
+  axios.post('http://localhost:8082/api/auth/login', { customerId, password });

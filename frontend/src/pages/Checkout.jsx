@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Smartphone, Banknote, CheckCircle, Download, Star, Search, UserPlus, UserCheck, X } from 'lucide-react';
-import { getBill, getLoyalty, checkout, searchCustomers, registerCustomer } from '../api';
+import { CreditCard, Smartphone, Banknote, CheckCircle, Download, Star, Search, UserPlus, UserCheck, X, Lock } from 'lucide-react';
+import { getBill, getCustomerLoyalty, checkout, searchCustomers, registerCustomer, verifyCustomer } from '../api';
 import toast from 'react-hot-toast';
 
 const METHODS = [
@@ -12,10 +12,15 @@ const METHODS = [
 
 // ── Customer Selection Step ───────────────────────────────────────────────────
 function CustomerStep({ onSelect, onSkip }) {
-  const [mode, setMode] = useState(null); // null | 'search' | 'new'
+  const [mode, setMode] = useState(null); // null | 'search' | 'new' | 'verify'
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [pendingCustomer, setPendingCustomer] = useState(null);
+  const [password, setPassword] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [loyaltyData, setLoyaltyData] = useState(null);   // loaded after verify
+  const [redeemLoyalty, setRedeemLoyalty] = useState(false);
   const [newForm, setNewForm] = useState({ name: '', phone: '', password: '' });
   const [registering, setRegistering] = useState(false);
   const debounceRef = useRef(null);
@@ -26,12 +31,41 @@ function CustomerStep({ onSelect, onSkip }) {
     if (!val.trim()) { setResults([]); return; }
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
-      try {
-        const res = await searchCustomers(val);
-        setResults(res.data || []);
-      } catch { setResults([]); }
+      try { const res = await searchCustomers(val); setResults(res.data || []); }
+      catch { setResults([]); }
       finally { setSearching(false); }
     }, 300);
+  };
+
+  const handlePickCustomer = (c) => {
+    setPendingCustomer(c);
+    setPassword('');
+    setLoyaltyData(null);
+    setRedeemLoyalty(false);
+    setMode('verify');
+  };
+
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    if (!password.trim()) { toast.error('Enter your password'); return; }
+    setVerifying(true);
+    try {
+      const res = await verifyCustomer(pendingCustomer.customerId, password);
+      const token = res.data.token;
+      // Fetch this customer's loyalty points right after verify
+      try {
+        const lRes = await getCustomerLoyalty(token);
+        setLoyaltyData(lRes.data);
+      } catch { setLoyaltyData(null); }
+      setMode('redeem');  // show loyalty step before confirming
+    } catch {
+      toast.error('Wrong password — try again');
+    } finally { setVerifying(false); }
+  };
+
+  const handleConfirm = () => {
+    onSelect(pendingCustomer, redeemLoyalty);
+    toast.success(`Welcome, ${pendingCustomer.name}!`);
   };
 
   const handleRegister = async () => {
@@ -42,8 +76,8 @@ function CustomerStep({ onSelect, onSkip }) {
     setRegistering(true);
     try {
       const res = await registerCustomer(newForm);
-      toast.success(`Customer registered! ID: ${res.data.customerId}`);
-      onSelect(res.data.customer);
+      toast.success(`Registered! ID: ${res.data.customerId}`);
+      onSelect(res.data.customer, false);
     } catch (e) {
       toast.error(e.response?.data?.error || 'Registration failed');
     } finally { setRegistering(false); }
@@ -53,25 +87,22 @@ function CustomerStep({ onSelect, onSkip }) {
     <div className="glass" style={{ padding: '24px' }}>
       <div style={{ fontWeight: 600, marginBottom: '18px', fontSize: '15px' }}>Customer</div>
 
-      {/* Three options */}
+      {/* Options */}
       {!mode && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <button className="btn btn-outline" style={{ justifyContent: 'flex-start', gap: '10px' }}
-                  onClick={onSkip}>
+          <button className="btn btn-outline" style={{ justifyContent: 'flex-start', gap: '10px' }} onClick={onSkip}>
             <X size={16} /> Skip — Guest Checkout
           </button>
-          <button className="btn btn-outline" style={{ justifyContent: 'flex-start', gap: '10px' }}
-                  onClick={() => setMode('search')}>
+          <button className="btn btn-outline" style={{ justifyContent: 'flex-start', gap: '10px' }} onClick={() => setMode('search')}>
             <Search size={16} /> Select Existing Customer
           </button>
-          <button className="btn btn-outline" style={{ justifyContent: 'flex-start', gap: '10px' }}
-                  onClick={() => setMode('new')}>
+          <button className="btn btn-outline" style={{ justifyContent: 'flex-start', gap: '10px' }} onClick={() => setMode('new')}>
             <UserPlus size={16} /> Add New Customer
           </button>
         </div>
       )}
 
-      {/* Search existing */}
+      {/* Search */}
       {mode === 'search' && (
         <div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
@@ -95,8 +126,7 @@ function CustomerStep({ onSelect, onSkip }) {
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {results.map(c => (
-              <button key={c.customerId}
-                      onClick={() => onSelect(c)}
+              <button key={c.customerId} onClick={() => handlePickCustomer(c)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '12px',
                         padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
@@ -116,13 +146,87 @@ function CustomerStep({ onSelect, onSkip }) {
         </div>
       )}
 
+      {/* Verify password */}
+      {mode === 'verify' && pendingCustomer && (
+        <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+            <UserCheck size={16} color="var(--gold)" />
+            <div>
+              <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--text)' }}>{pendingCustomer.name}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{pendingCustomer.customerId} · {pendingCustomer.phone}</div>
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-dim)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Enter Password to Verify
+            </label>
+            <div style={{ position: 'relative' }}>
+              <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
+              <input className="input" type="password" placeholder="Customer password"
+                     style={{ paddingLeft: '36px' }}
+                     value={password} onChange={e => setPassword(e.target.value)} autoFocus />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button type="submit" className="btn btn-gold" style={{ flex: 1, justifyContent: 'center' }} disabled={verifying}>
+              {verifying ? <span className="spinner" /> : <Lock size={14} />}
+              {verifying ? 'Verifying…' : 'Confirm'}
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => { setMode('search'); setPendingCustomer(null); }}>
+              Back
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Loyalty redeem — shown only after successful verify, before confirming */}
+      {mode === 'redeem' && pendingCustomer && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Confirmed customer chip */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)' }}>
+            <UserCheck size={16} color="var(--gold)" />
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text)' }}>{pendingCustomer.name}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{pendingCustomer.customerId}</div>
+            </div>
+            <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--green)', fontWeight: 600 }}>✓ Verified</span>
+          </div>
+
+          {/* Loyalty option — only if they actually have points */}
+          {loyaltyData && loyaltyData.points > 0 ? (
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer',
+              padding: '14px 16px', borderRadius: '10px',
+              border: `1px solid ${redeemLoyalty ? 'rgba(212,175,55,0.4)' : 'var(--border)'}`,
+              background: redeemLoyalty ? 'rgba(212,175,55,0.06)' : 'transparent',
+              transition: 'all 0.2s',
+            }}>
+              <input type="checkbox" checked={redeemLoyalty} onChange={e => setRedeemLoyalty(e.target.checked)}
+                     style={{ accentColor: 'var(--gold)', width: 16, height: 16 }} />
+              <Star size={16} color="var(--gold)" />
+              <div>
+                <div style={{ fontWeight: 500, fontSize: '14px' }}>Redeem {loyaltyData.points} loyalty points</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Save ₹{loyaltyData.rupeeValue?.toFixed(2)}</div>
+              </div>
+            </label>
+          ) : (
+            <div style={{ fontSize: '13px', color: 'var(--text-dim)', padding: '8px 0' }}>
+              No loyalty points available.
+            </div>
+          )}
+
+          <button className="btn btn-gold" onClick={handleConfirm} style={{ justifyContent: 'center' }}>
+            <UserCheck size={15} /> Continue to Payment
+          </button>
+        </div>
+      )}
+
       {/* Add new */}
       {mode === 'new' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
             <span style={{ fontSize: '13px', color: 'var(--text-dim)' }}>New Customer</span>
-            <button className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '12px' }}
-                    onClick={() => setMode(null)}>
+            <button className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => setMode(null)}>
               <X size={12} /> Back
             </button>
           </div>
@@ -141,8 +245,7 @@ function CustomerStep({ onSelect, onSkip }) {
             <input className="input" type="password" placeholder="Set a password"
                    value={newForm.password} onChange={e => setNewForm(f => ({ ...f, password: e.target.value }))} />
           </div>
-          <button className="btn btn-gold" onClick={handleRegister} disabled={registering}
-                  style={{ justifyContent: 'center' }}>
+          <button className="btn btn-gold" onClick={handleRegister} disabled={registering} style={{ justifyContent: 'center' }}>
             {registering ? <><span className="spinner" /> Registering…</> : 'Register & Select'}
           </button>
         </div>
@@ -150,31 +253,33 @@ function CustomerStep({ onSelect, onSkip }) {
     </div>
   );
 }
-
-// ── Main Checkout ─────────────────────────────────────────────────────────────
+// Main Checkout
 export default function Checkout() {
   const nav = useNavigate();
   const [bill, setBill] = useState(null);
-  const [loyalty, setLoyalty] = useState(null);
   const [method, setMethod] = useState('UPI');
   const [redeemLoyalty, setRedeemLoyalty] = useState(false);
   const [form, setForm] = useState({ upiId: '', cardNumber: '', cardHolder: '', cashTendered: '' });
   const [processing, setProcessing] = useState(false);
   const [receipt, setReceipt] = useState(null);
-  const [selectedCustomer, setSelectedCustomer] = useState(null); // null = not chosen yet
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerSkipped, setCustomerSkipped] = useState(false);
 
   const customerChosen = customerSkipped || selectedCustomer !== null;
 
   useEffect(() => {
-    Promise.all([getBill(), getLoyalty()])
-      .then(([b, l]) => { setBill(b.data); setLoyalty(l.data); })
-      .catch(() => toast.error('Failed to load bill'));
+    getBill().then(r => setBill(r.data)).catch(() => toast.error('Failed to load bill'));
   }, []);
 
   useEffect(() => {
     getBill(redeemLoyalty).then(r => setBill(r.data)).catch(() => {});
   }, [redeemLoyalty]);
+
+  // onSelect receives (customer, redeemDecision) — loyalty already decided in CustomerStep
+  const handleCustomerSelect = (customer, redeem) => {
+    setSelectedCustomer(customer);
+    setRedeemLoyalty(!!redeem);
+  };
 
   const handleCheckout = async () => {
     setProcessing(true);
@@ -255,8 +360,8 @@ export default function Checkout() {
           {/* Step 1: Customer Selection */}
           {!customerChosen ? (
             <CustomerStep
-              onSelect={c => { setSelectedCustomer(c); }}
-              onSkip={() => setCustomerSkipped(true)}
+              onSelect={handleCustomerSelect}
+              onSkip={() => { setCustomerSkipped(true); setRedeemLoyalty(false); }}
             />
           ) : (
             <div className="glass" style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -274,7 +379,7 @@ export default function Checkout() {
                 </div>
               </div>
               <button className="btn btn-outline" style={{ padding: '4px 10px', fontSize: '12px' }}
-                      onClick={() => { setSelectedCustomer(null); setCustomerSkipped(false); }}>
+                      onClick={() => { setSelectedCustomer(null); setCustomerSkipped(false); setRedeemLoyalty(false); }}>
                 Change
               </button>
             </div>
@@ -342,19 +447,6 @@ export default function Checkout() {
                 )}
               </div>
 
-              {loyalty && loyalty.points > 0 && (
-                <div className="glass" style={{ padding: '16px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={redeemLoyalty} onChange={e => setRedeemLoyalty(e.target.checked)}
-                           style={{ accentColor: 'var(--gold)', width: 16, height: 16 }} />
-                    <Star size={16} color="var(--gold)" />
-                    <div>
-                      <div style={{ fontWeight: 500, fontSize: '14px' }}>Redeem {loyalty.points} loyalty points</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Save ₹{loyalty.rupeeValue?.toFixed(2)}</div>
-                    </div>
-                  </label>
-                </div>
-              )}
             </>
           )}
         </div>

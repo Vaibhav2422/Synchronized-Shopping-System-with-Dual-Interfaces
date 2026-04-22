@@ -32,25 +32,54 @@ std::string ReceiptWriter::getReceiptFilename(int orderId) {
 
 std::string ReceiptWriter::generateReceipt(const Order& order, const Bill& bill,
                                            const std::string& custName,
-                                           const std::string& custId) {
+                                           const std::string& custId,
+                                           const PaymentDetails& pd) {
     std::ostringstream receipt;
+    receipt << std::fixed << std::setprecision(2);
 
-    // Header border
+    // Header
     receipt << BORDER << "\n";
     receipt << "    SHOPPING MANAGEMENT SYSTEM - RECEIPT\n";
     receipt << BORDER << "\n";
 
-    // Customer info (when linked)
+    // Customer info
     if (!custName.empty()) {
         receipt << "Customer      : " << custName << "\n";
         receipt << "Customer ID   : " << custId   << "\n";
+        if (!pd.phone.empty())
+            receipt << "Mobile        : " << pd.phone << "\n";
+    } else {
+        receipt << "Customer      : Guest\n";
     }
 
     // Order details
-    receipt << "Order ID      : " << order.getOrderId() << "\n";
+    receipt << "Order ID      : #" << std::setw(4) << std::setfill('0') << order.getOrderId() << "\n";
+    receipt << std::setfill(' ');
     receipt << "Date          : " << order.getOrderDate() << "\n";
     receipt << "Time          : " << order.getOrderTime() << "\n";
-    receipt << "Payment Method: " << order.getPaymentMethod() << "\n";
+
+    receipt << SEPARATOR << "\n";
+
+    // Payment details
+    receipt << "PAYMENT DETAILS\n";
+    receipt << "Method        : " << order.getPaymentMethod() << "\n";
+    if (pd.method == "UPI" && !pd.upiId.empty()) {
+        receipt << "UPI ID        : " << pd.upiId << "\n";
+    } else if (pd.method == "Card") {
+        if (!pd.cardHolder.empty())
+            receipt << "Card Holder   : " << pd.cardHolder << "\n";
+        if (!pd.cardNumber.empty()) {
+            // Mask: show only last 4 digits
+            std::string masked = "XXXX-XXXX-XXXX-";
+            masked += pd.cardNumber.size() >= 4
+                      ? pd.cardNumber.substr(pd.cardNumber.size() - 4)
+                      : pd.cardNumber;
+            receipt << "Card Number   : " << masked << "\n";
+        }
+    } else if (pd.method == "Cash") {
+        receipt << "Cash Tendered : Rs." << pd.cashTendered << "\n";
+        receipt << "Change        : Rs." << pd.cashChange   << "\n";
+    }
 
     receipt << SEPARATOR << "\n";
 
@@ -65,9 +94,18 @@ std::string ReceiptWriter::generateReceipt(const Order& order, const Bill& bill,
     // Bill summary
     receipt << bill.getSummary();
 
+    // Loyalty points
+    if (pd.loyaltyEarned > 0 || pd.loyaltyTotal > 0) {
+        receipt << SEPARATOR << "\n";
+        receipt << "LOYALTY POINTS\n";
+        if (pd.loyaltyEarned > 0)
+            receipt << "  Points Earned  : +" << pd.loyaltyEarned << " pts\n";
+        receipt << "  Total Balance  :  " << pd.loyaltyTotal  << " pts\n";
+    }
+
     // Footer
     receipt << BORDER << "\n";
-    receipt << "         Thank you for shopping!\n";
+    receipt << "     *** THANK YOU FOR SHOPPING! ***\n";
     receipt << "  " << Version::PROJECT_NAME << " v" << Version::VERSION << "\n";
     receipt << BORDER << "\n";
 

@@ -14,9 +14,9 @@
       "name": "Vaibhav Hade",
       "phone": "9309719144",
       "passwordHash": "83704a0405458b07f81e255be3b2bac72a31e9ae42541b0da27e9a3c6b5380a2",
-      "loyaltyPoints": 760,
-      "orderIds": [1, 3],
-      "createdAt": ""
+      "loyaltyPoints": 806,
+      "orderIds": [1, 3, 1, 1],
+      "createdAt": "18/04/2026"
     }
   ],
   "nextIndex": 3

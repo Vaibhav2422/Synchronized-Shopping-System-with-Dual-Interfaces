@@ -25,9 +25,22 @@ public:
      * @param custId   Optional customer ID (empty = guest)
      * @return A formatted receipt string
      */
+    struct PaymentDetails {
+        std::string method;       // "UPI", "Card", "Cash"
+        std::string upiId;        // UPI only
+        std::string cardHolder;   // Card only
+        std::string cardNumber;   // Card only (will be masked)
+        double      cashTendered; // Cash only
+        double      cashChange;   // Cash only
+        std::string phone;        // customer phone (optional)
+        int         loyaltyEarned;
+        int         loyaltyTotal;
+    };
+
     static std::string generateReceipt(const Order& order, const Bill& bill,
                                        const std::string& custName = "",
-                                       const std::string& custId   = "");
+                                       const std::string& custId   = "",
+                                       const PaymentDetails& pd    = {});
 
     /**
      * Saves receipt content to data/receipts/receipt_XXXX.txt.
