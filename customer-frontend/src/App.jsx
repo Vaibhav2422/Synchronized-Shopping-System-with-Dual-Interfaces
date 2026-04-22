@@ -3,17 +3,16 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './AuthContext';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import History from './pages/History';
-import Loyalty from './pages/Loyalty';
+import Analytics from './pages/Analytics';
+import Inventory from './pages/Inventory';
 
 function ProtectedRoute({ children }) {
-  const { token } = useAuth();
-  return token ? children : <Navigate to="/" replace />;
+  const { authed } = useAuth();
+  return authed ? children : <Navigate to="/" replace />;
 }
 
 function AppRoutes() {
-  const { token } = useAuth();
+  const { authed } = useAuth();
 
   return (
     <>
@@ -29,14 +28,13 @@ function AppRoutes() {
           success: { iconTheme: { primary: '#d4af37', secondary: '#0a0a0f' } },
         }}
       />
-      {token && <Navbar />}
-      <main style={{ paddingTop: token ? '70px' : '0', minHeight: '100vh' }}>
+      {authed && <Navbar />}
+      <main style={{ paddingTop: authed ? '70px' : '0', minHeight: '100vh' }}>
         <Routes>
-          <Route path="/" element={token ? <Navigate to="/dashboard" replace /> : <Login />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/history"   element={<ProtectedRoute><History /></ProtectedRoute>} />
-          <Route path="/loyalty"   element={<ProtectedRoute><Loyalty /></ProtectedRoute>} />
-          <Route path="*"          element={<Navigate to="/" replace />} />
+          <Route path="/" element={authed ? <Navigate to="/analytics" replace /> : <Login />} />
+          <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+          <Route path="/inventory"  element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+          <Route path="*"           element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </>

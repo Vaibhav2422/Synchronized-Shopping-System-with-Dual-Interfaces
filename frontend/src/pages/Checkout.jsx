@@ -107,7 +107,7 @@ function CustomerStep({ onSelect, onSkip }) {
                       onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
                 <UserCheck size={16} color="var(--gold)" />
                 <div>
-                  <div style={{ fontWeight: 500, fontSize: '14px' }}>{c.name}</div>
+                  <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--text)' }}>{c.name}</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{c.customerId} · {c.phone}</div>
                 </div>
               </button>

@@ -1,14 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, Package, BarChart2, Shield, History, Store } from 'lucide-react';
+import { ShoppingCart, Package, History, Store } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getCart } from '../api';
 
 const links = [
-  { to: '/',          label: 'Catalog',    icon: Store },
-  { to: '/cart',      label: 'Cart',       icon: ShoppingCart },
-  { to: '/orders',    label: 'Orders',     icon: History },
-  { to: '/analytics', label: 'Analytics',  icon: BarChart2 },
-  { to: '/admin',     label: 'Admin',      icon: Shield },
+  { to: '/',       label: 'Catalog', icon: Store },
+  { to: '/cart',   label: 'Cart',    icon: ShoppingCart },
+  { to: '/orders', label: 'Orders',  icon: History },
 ];
 
 export default function Navbar() {

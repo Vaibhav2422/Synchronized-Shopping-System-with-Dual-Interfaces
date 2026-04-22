@@ -2,13 +2,22 @@
   "customers": [
     {
       "customerId": "CUST0001",
-      "name": "StatsUser3613",
-      "phone": "93100003613",
-      "passwordHash": "30c952fab122c3f9759f02a6d95c3758b246b4fee239957b2d4fee46e26170c4",
-      "loyaltyPoints": 0,
-      "orderIds": [167, 168],
+      "name": "Demo Customer",
+      "phone": "9999999999",
+      "passwordHash": "37268335dd6931045bdcdf92623ff819a64244b53d0e746d438797349d4da578",
+      "loyaltyPoints": 25,
+      "orderIds": [],
+      "createdAt": "19/04/2026"
+    },
+    {
+      "customerId": "CUST0002",
+      "name": "Vaibhav Hade",
+      "phone": "9309719144",
+      "passwordHash": "83704a0405458b07f81e255be3b2bac72a31e9ae42541b0da27e9a3c6b5380a2",
+      "loyaltyPoints": 760,
+      "orderIds": [1, 3],
       "createdAt": ""
     }
   ],
-  "nextIndex": 2
+  "nextIndex": 3
 }

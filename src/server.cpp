@@ -74,7 +74,12 @@ static std::string customerJson(const CustomerRecord& c) {
       << ",\"phone\":\""      << esc(c.phone)       << "\""
       << ",\"loyaltyPoints\":" << c.loyaltyPoints
       << ",\"createdAt\":\""  << esc(c.createdAt)  << "\""
-      << "}";
+      << ",\"orderIds\":[";
+    for (size_t i = 0; i < c.orderIds.size(); i++) {
+        if (i) o << ",";
+        o << c.orderIds[i];
+    }
+    o << "]}";
     return o.str();
 }
 

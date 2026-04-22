@@ -113,6 +113,12 @@ export default function Analytics() {
 
   useEffect(() => { load(); }, []);
 
+  // Build a map: orderId -> customer name (for orders linked to a registered customer)
+  const orderCustomerMap = ranked.reduce((acc, entry) => {
+    (entry.customer.orderIds || []).forEach(oid => { acc[oid] = entry.customer.name; });
+    return acc;
+  }, {});
+
   const methodCounts = orders.reduce((acc, o) => {
     acc[o.paymentMethod] = (acc[o.paymentMethod] || 0) + 1;
     return acc;
@@ -131,7 +137,7 @@ export default function Analytics() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
         <div>
           <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', fontWeight: 700 }} className="gold-text">Sales Analytics</h1>
-          <p style={{ color: 'var(--text-dim)', fontSize: '14px', marginTop: '4px' }}>Real-time insights from your C++ backend</p>
+          <p style={{ color: 'var(--text-dim)', fontSize: '14px', marginTop: '4px' }}>Real-time insights</p>
         </div>
         <button className="btn btn-outline" onClick={load} style={{ padding: '8px 12px' }}><RefreshCw size={14} /></button>
       </div>
@@ -150,7 +156,6 @@ export default function Analytics() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            {/* Top products */}
             <div className="glass" style={{ padding: '20px' }}>
               <div style={{ fontWeight: 600, marginBottom: '16px', fontSize: '14px' }}>Top Products by Quantity</div>
               {topProducts.length === 0
@@ -168,7 +173,6 @@ export default function Analytics() {
                 ))}
             </div>
 
-            {/* Payment methods */}
             <div className="glass" style={{ padding: '20px' }}>
               <div style={{ fontWeight: 600, marginBottom: '16px', fontSize: '14px' }}>Payment Methods</div>
               {Object.keys(methodCounts).length === 0
@@ -190,7 +194,6 @@ export default function Analytics() {
                 })}
             </div>
 
-            {/* Customer Rankings */}
             <div className="glass" style={{ padding: '20px', gridColumn: '1 / -1' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                 <Users size={16} color="var(--gold)" />
@@ -198,76 +201,72 @@ export default function Analytics() {
                 <span style={{ fontSize: '12px', color: 'var(--text-dim)', marginLeft: '4px' }}>Click a row to view order history</span>
               </div>
               {ranked.length === 0
-                ? <p style={{ color: 'var(--text-dim)', fontSize: '13px' }}>No customers registered yet</p>
+                ? <p style={{ color: 'var(--text-dim)', fontSize: '13px' }}>No customers yet</p>
                 : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                          {['Rank', 'Name', 'Phone', 'Total Spent', 'Visits'].map(h => (
-                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-dim)', fontWeight: 500 }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ranked.map(entry => (
-                          <tr key={entry.customer.customerId}
-                              onClick={() => setSelectedEntry(entry)}
-                              style={{ borderBottom: '1px solid rgba(212,175,55,0.05)', cursor: 'pointer', transition: 'background 0.15s' }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(212,175,55,0.04)'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span style={{
-                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                width: 24, height: 24, borderRadius: '50%', fontSize: '12px', fontWeight: 700,
-                                background: entry.rank <= 3 ? 'rgba(212,175,55,0.15)' : 'var(--bg2)',
-                                color: entry.rank <= 3 ? 'var(--gold)' : 'var(--text-dim)',
-                              }}>{entry.rank}</span>
-                            </td>
-                            <td style={{ padding: '10px 12px', fontWeight: 500 }}>{entry.customer.name}</td>
-                            <td style={{ padding: '10px 12px', color: 'var(--text-dim)' }}>{entry.customer.phone}</td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span className="gold-text" style={{ fontWeight: 600 }}>₹{entry.totalSpent.toFixed(2)}</span>
-                            </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--text-dim)' }}>{entry.visitCount}</td>
-                          </tr>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        {['Rank', 'Name', 'Phone', 'Total Spent', 'Visits'].map(h => (
+                          <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-dim)', fontWeight: 500 }}>{h}</th>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ranked.map(entry => (
+                        <tr key={entry.customer.customerId}
+                            onClick={() => setSelectedEntry(entry)}
+                            style={{ borderBottom: '1px solid rgba(212,175,55,0.05)', cursor: 'pointer' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(212,175,55,0.04)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              width: 24, height: 24, borderRadius: '50%', fontSize: '12px', fontWeight: 700,
+                              background: entry.rank <= 3 ? 'rgba(212,175,55,0.15)' : 'var(--bg2)',
+                              color: entry.rank <= 3 ? 'var(--gold)' : 'var(--text-dim)',
+                            }}>{entry.rank}</span>
+                          </td>
+                          <td style={{ padding: '10px 12px', fontWeight: 500 }}>{entry.customer.name}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-dim)' }}>{entry.customer.phone}</td>
+                          <td style={{ padding: '10px 12px' }}><span className="gold-text" style={{ fontWeight: 600 }}>₹{entry.totalSpent.toFixed(2)}</span></td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-dim)' }}>{entry.visitCount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
             </div>
 
-            {/* Recent Orders */}
             <div className="glass" style={{ padding: '20px', gridColumn: '1 / -1' }}>
               <div style={{ fontWeight: 600, marginBottom: '16px', fontSize: '14px' }}>Recent Orders</div>
               {orders.length === 0
                 ? <p style={{ color: 'var(--text-dim)', fontSize: '13px' }}>No orders yet</p>
                 : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                          {['Order', 'Date', 'Products', 'Method', 'Total'].map(h => (
-                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-dim)', fontWeight: 500 }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...orders].reverse().slice(0, 8).map(o => (
-                          <tr key={o.orderId} style={{ borderBottom: '1px solid rgba(212,175,55,0.05)' }}>
-                            <td style={{ padding: '10px 12px', color: 'var(--gold)' }}>#{String(o.orderId).padStart(4, '0')}</td>
-                            <td style={{ padding: '10px 12px', color: 'var(--text-dim)' }}>{o.orderDate}</td>
-                            <td style={{ padding: '10px 12px' }}>{o.products.map(p => p.name).join(', ')}</td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span style={{ color: METHOD_COLORS[o.paymentMethod] || '#888' }}>{o.paymentMethod}</span>
-                            </td>
-                            <td style={{ padding: '10px 12px', fontWeight: 600 }}>₹{o.totalAmount.toFixed(2)}</td>
-                          </tr>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        {['Order', 'Date', 'Customer', 'Products', 'Method', 'Total'].map(h => (
+                          <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-dim)', fontWeight: 500 }}>{h}</th>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...orders].reverse().slice(0, 8).map(o => (
+                        <tr key={o.orderId} style={{ borderBottom: '1px solid rgba(212,175,55,0.05)' }}>
+                          <td style={{ padding: '10px 12px', color: 'var(--gold)' }}>#{String(o.orderId).padStart(4, '0')}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-dim)' }}>{o.orderDate}</td>
+                          <td style={{ padding: '10px 12px' }}>
+                            {orderCustomerMap[o.orderId]
+                              ? <span style={{ fontWeight: 500 }}>{orderCustomerMap[o.orderId]}</span>
+                              : <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>Guest</span>}
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>{o.products.map(p => p.name).join(', ')}</td>
+                          <td style={{ padding: '10px 12px' }}><span style={{ color: METHOD_COLORS[o.paymentMethod] || '#888' }}>{o.paymentMethod}</span></td>
+                          <td style={{ padding: '10px 12px', fontWeight: 600 }}>₹{o.totalAmount.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
             </div>
           </div>
